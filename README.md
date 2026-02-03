@@ -22,21 +22,17 @@ llm-training-course/
 ├── PLANNING.md                 # 开发计划
 ├── README.md                   # 项目说明
 ├── docs/                       # 课程文档
-│   ├── day1/                   # Day 1 文档
-│   └── day2/                   # Day 2 文档
+│   └── modules/                # 模块文档
 ├── slides/                     # 课程幻灯片
-│   ├── day1/                   # Day 1 幻灯片
-│   └── day2/                   # Day 2 幻灯片
+│   └── modules/                # 模块幻灯片
 ├── labs/                       # 实验指导
-│   ├── day1/                   # Day 1 实验
-│   └── day2/                   # Day 2 实验
+│   └── modules/                # 模块实验
 ├── resources/                  # 课程资源
 │   ├── data/                   # 示例数据集
 │   ├── models/                 # 模型配置
 │   └── configs/                # 各种配置文件
 ├── code_samples/               # 代码示例
-│   ├── day1/                   # Day 1 代码
-│   └── day2/                   # Day 2 代码
+│   └── modules/                # 模块代码示例
 └── exercises/                  # 练习题
 ```
 

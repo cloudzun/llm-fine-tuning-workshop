@@ -8,10 +8,11 @@
 
 ## 当前进度
 - [x] 课程大纲设计
-- [x] 项目目录结构创建
-- [x] Day 1 模块2讲义制作 (LLaMA Factory微调实战)
-- [x] Day 1 模块2实验手册制作 (LLaMA Factory微调实战)
-- [ ] Day 1 其他讲义制作
+- [x] 项目目录结构创建（更新为module结构）
+- [x] Module 2讲义制作 (LLaMA Factory微调实战)
+- [x] Module 2实验手册制作 (LLaMA Factory微调实战)
+- [ ] Module 1讲义制作
+- [ ] Module 3-4讲义制作
 - [ ] Day 2 讲义制作
 - [ ] 实验环境配置文档
 - [ ] 示例数据集准备
@@ -28,8 +29,8 @@
 - [ ] AutoDL使用说明
 
 #### 模块2: LLaMA Factory微调实战
-- [ ] PPT制作
-- [ ] 实验指导手册
+- [x] PPT制作
+- [x] 实验指导手册
 - [ ] 示例数据集
 - [ ] 微调配置模板
 
