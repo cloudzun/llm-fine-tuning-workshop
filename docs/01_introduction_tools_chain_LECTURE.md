@@ -9,140 +9,65 @@ categories: ["LLM","工程实践"]
 # 第1章 导论与工具链（教科书式）
 
 ## 学习目标
-完成本章后，你应该能够：
+完成本章后，你应能：
 1. 用连贯的认知框架解释大型语言模型（LLM）的输入—模型—输出流程；
-2. 理解 tokenizer、embedding、注意力机制与解码的基本数学表达与直观含义；
-3. 搭建最小可复现的实验环境并解释为什么要保证可复现性；
-4. 应用一个“手工演算”的小示例，理解 self-attention 在推理中如何改变表示；
-5. 通过练习题巩固概念并检验理解深度。
+2. 理解 tokenization、embedding、self-attention 与解码的基本直观机制；
+3. 搭建最小可复现的实验环境并运行 smoke test；
+4. 在小的 toy 示例上手算一层 attention 的输出并解释其含义；
+5. 记录并报告环境信息以保证可复现性。
 
 ---
 
-## 1. 引言：为什么工程师要既懂原理又会动手
-在工程环境中，LLM 不只是一个黑箱 API：我们要做的工作包括选模型、准备数据、评估效果、解决性能瓶颈并把结果服务化。理解模型内部机制（例如 tokenization、attention）能帮助我们做出工程决策：为什么要量化？为什么 LoRA 能在少量显存上取得效果？为什么 seed 与依赖版本会导致结果不同？本章从直观出发引入关键原理，并通过手工例子把抽象数学变成可观察的步骤。
+## 引言
+在工程化场景下，LLM 不再是学术论文中的模型秀——它是需要被打包、部署和运营的工程组件。工程师要在模型能力、成本与风险之间权衡。为此，本章以工程实践优先的视角，把最必要的原理与可操作步骤结合起来：你既要知道内部机制“为什么”，也要知道如何把模型跑起来“怎么做”。
 
 ---
 
-## 2. 基本概念与流程（从字符串到生成文本）
-LLM 的典型推理流程可分为几步：
-1. 文本 → tokens（分词、编码）
-2. tokens → embeddings（将 token 映射为向量）
-3. 编码器/解码器网络（自注意力层、前馈网络）计算新的表示
-4. 解码模块把 logits 转换成概率并采样生成下一个 token
-
-每一步都有工程风险：分词选择影响序列长度与 OOV；embedding 维度影响内存与计算；解码参数（temperature、top-k）影响生成质量与多样性。
+## 从字符串到生成：系统流程
+典型推理流水线包含：分词 (tokenization) → embedding → Transformer 编码（自注意力 + 前馈）→ 解码（logits → softmax → 采样）。每个环节都会影响性能和输出质量：分词决定序列长度，embedding 决定维度，Transformer 决定计算密度，解码影响输出多样性。
 
 ---
 
-## 3. Tokenization（分词）——要点
-- 目标：把任意文本映射为有限词表中的整数 id 序列。
-- 常见算法：BPE、WordPiece、Unigram；它们在截断/合并子词的策略上不同，直接影响到序列长度与模型输入分布。
-- 工程注意：选择词表时考虑目标语料（中文/英文/混合）、特殊 token（</s>、<pad>）与最大长度限制。
-
-
----
-
-## 4. Transformer 与自注意力（核心数学与直观）
-Transformer 的核心构件是自注意力（self-attention），其一层的计算可以写成：
-
-1. 线性变换：
-   Q = X W_Q,  K = X W_K,  V = X W_V
-
-2. 相关性得分（scaled dot-product）：
-   A = softmax(Q K^T / sqrt(d_k))
-
-3. 输出：
-   Y = A V
-
-其中 X ∈ R^{T×d}（T 为序列长度，d 为 embedding 维度），W_Q,W_K,W_V ∈ R^{d×d_k}。
-
-直观解释：每个 token 构造一个查询（Q），并用它去“询问”序列中所有 token 的键（K），softmax 得到的 A 表示每个 token 对当前 token 的注意力权重，最后用这些权重加权 V（值）得到新的表示。
-
-工程要点：
-- 缩放因子 sqrt(d_k) 用于稳定内积的数值范围；
-- 多头注意力把 d 分成多份并行学习不同的关联模式；
-- 注意力矩阵 A 的稀疏性 / 模式反映模型在上下文中关注的信息位置。
+## 关键概念精要
+- Tokenization：选择 BPE/Unigram 等会影响子词切分与序列长度。中文多用 SentencePiece/Unigram；英文常用 BPE/WordPiece。  
+- Self-Attention：查询-键-值机制决定上下文信息如何聚合。  
+- 解码控制：temperature、top-k/top-p、beam 等控制生成质量与多样性。  
+- 可复现性：固定随机种子、记录依赖版本、提供小样本与 smoke test。
 
 ---
 
-## 5. 解码与采样（生成控制）
-解码从 logits 开始：logits = Linear(Y_last)，然后通过 softmax 得到概率分布 p(token)。
-常用控制参数：
-- temperature：控制分布平滑度，T<1 更确定，T>1 更多样化；
-- top-k / top-p(nucleus)：截断低概率候选，控制质量与多样性；
-- beam search：束搜索用于更高质量但开销大。
-
-工程建议：教学示例用固定 seed + deterministic 策略（如 greedy 或 small beam）以保证可复现；练习中再让学员探索不同采样参数的影响。
+## 手工 Worked Example（attention 手算，回顾）
+（本例为简化说明，见 lab 的可运行 demo）
+见章节手算示例：给定 X、Q=K=V=X，计算 S=QK^T，缩放、softmax 得到 A，最后 Y=AV，观察每个 token 表示如何混合上下文向量。
 
 ---
 
-## 6. 手工 worked example：在一个极小模型上演算 attention（逐步）
-目标：通过一个 3-token、d=2 的 toy 示例，手工计算一层 self-attention 的输出，观察表示如何变化。
-
-设输入 token 的 embedding 矩阵 X（按行为 token）为：
-X = [[1.0, 0.0],
-     [0.0, 1.0],
-     [1.0, 1.0]]
-
-设 W_Q = W_K = W_V = I（单位矩阵），d_k = 2。则 Q=K=V=X。
-
-步骤：
-1) 计算未缩放相似度 S = Q K^T = X X^T：
-S = [[1*1+0*0, 1*0+0*1, 1*1+0*1],
-     [0*1+1*0, 0*0+1*1, 0*1+1*1],
-     [1*1+1*0, 1*0+1*1, 1*1+1*1]]
-  = [[1,0,1],[0,1,1],[1,1,2]]
-
-2) 缩放（sqrt(d_k)=sqrt(2)≈1.414）：
-S_scaled = S / 1.414 ≈ [[0.707,0,0.707],[0,0.707,0.707],[0.707,0.707,1.414]]
-
-3) 对每一行做 softmax 得到 A（近似计算）：
-- row0 softmax([0.707,0,0.707]) → 等价于 softmax([a,0,a])，概率 ≈ [0.422,0.156,0.422]
-- row1 softmax([0,0.707,0.707]) → ≈ [0.156,0.422,0.422]
-- row2 softmax([0.707,0.707,1.414]) → ≈ [0.211,0.211,0.578]
-
-4) 计算 Y = A V（V = X）：
-- y0 = 0.422*[1,0] + 0.156*[0,1] + 0.422*[1,1] = [0.422+0+0.422, 0+0.156+0.422] = [0.844,0.578]
-- y1 = 0.156*[1,0] + 0.422*[0,1] + 0.422*[1,1] = [0.156+0+0.422, 0+0.422+0.422] = [0.578,0.844]
-- y2 = 0.211*[1,0] + 0.211*[0,1] + 0.578*[1,1] = [0.211+0+0.578, 0+0.211+0.578] = [0.789,0.789]
-
-观察：原始 embedding 为标准基向量与 [1,1]，经过注意力后，每个 token 的表示都混合了上下文信息（对齐到相似 token 的方向更多权重）。这一手工例子有助于理解注意力如何把“上下文信息”写进新的向量表示。
+## 工程要点（环境与 smoke test）
+- 环境：推荐 Python 3.10、venv、固定依赖（requirements.txt）或 Docker 镜像。  
+- Smoke test：提供一个能在 CPU 上运行的小模型 demo（例如 distilgpt2），脚本需输出环境版本信息与生成文本，CI 根据输出断言通过。  
+- 缓存与离线方案：课堂应准备模型缓存或离线包以避免网络问题。
 
 ---
 
-## 7. 工程侧注：可复现性与最小 demo 的要点
-- 固定随机种子（numpy、torch、transformers）与记录版本：torch==X, transformers==Y。版本漂移会导致不同的 tokenization 或算子实现差异。
-- 提供最小 demo（distilgpt2）作为 smoke test，保证每位学员有相同的基线输出（记录环境信息）。
-- 对于课堂：优先保证“能跑通”再强调性能优化，避免一开始就依赖 GPU 环境。
+## 练习（Exercises）
+1. 手算 attention：按本章 worked example 手工计算一行 softmax 的近似概率并解释。  
+2. 在本地运行 labs/01 的 demo.py，记录 transformers 与 torch 版本与生成文本。  
+3. 修改 demo 中的 temperature 与 top_k，分别运行并记录生成差异（简短对比说明）。  
+4. 编写一个小脚本记录当前虚拟环境中所有依赖的版本并输出为 json（README 中需说明如何运行）。
 
 ---
 
-## 8. 练习（Exercises）
-请在本地环境中完成以下练习，并在作业提交中附上运行截图或日志。
-
-1. （理解）解释 softmax 的作用：为什么不直接用 dot-product 做权重？说明缩放因子 sqrt(d_k) 的作用。
-
-2. （手算）在本章 worked example 的基础上，若将 W_V 乘以 2（即 V'=2V），手工重算 y0，说明改变 V 如何影响输出。
-
-3. （实践）运行提供的 demo.py（使用 distilgpt2），记录 transformers 与 torch 版本与生成文本。把 demo 输出附在提交中，并说明如果更换 tokenizer（例如从 BPE 换成 SentencePiece）可能出现的影响。
-
-4. （思考）提出两种工程上避免模型加载过慢的方法，并说明各自优缺点（至少说清楚实现成本与对学生实验环境的适用性）。
+## 练习参考提示（简短答案提示）
+1. softmax 会把映射变为概率分布，缩放因子 sqrt(d_k) 用于稳定数值范围，避免 softmax 进入极端。  
+2. demo.py 输出中包含 transformers 和 torch 的版本字段，将其粘贴到报告中。  
+3. 降低 temperature 值会使输出更保守，减少多样性；较高 temperature 增加随机性。top_k 限制候选集会提高生成稳定性但可能降低多样性。  
+4. 可以用 pkg_resources 或 pip list --format=json 获取依赖并写入文件。
 
 ---
 
-## 9. 参考阅读与延伸
-- Vaswani et al., "Attention is All You Need"（Transformer 原始论文）
-- Hugging Face Transformers 文档与 pipeline 教程
-- 课程实验手册（labs/01_introduction_tools_chain_LAB.md） — 包含 smoke test 与环境搭建脚本
+## 参考与延伸
+- Vaswani et al., "Attention is All You Need"  
+- Hugging Face Transformers 文档  
+- labs/01_introduction_tools_chain_LAB.md（环境搭建与 smoke test）
 
----
-
-## 附录：练习参考答案（提示）
-1. softmax 保证权重为正且和为 1，缩放因子避免大维度下内积过大导致梯度消失或 softmax 极端化。 
-2. 若 V' = 2V，则 y0 中对 V 的贡献翻倍，按上例计算可得到 y0' = 0.422*[1,0] + 0.156*[0,2] + 0.422*[1,2] = [0.844,1.0]
-3. 见 lab：记录版本并附输出；更换 tokenizer 会改变 token 切分和序列长度，影响模型输入使得生成略有差异，可能需要调整 max_length。
-4. 方法示例：a) 缓存模型文件并使用内网镜像（实现成本中等，适合课堂）；b) 使用小模型做 smoke test，把大模型留到选做（实现成本低，牺牲真实性）。
-
----
-
-结束语：本章以教科书式的连贯叙述为主，力求把抽象原理讲清楚并通过手工例子让概念可观测。下一章将进入微调方法（LoRA/QLoRA），我们将继续保持“原理+手算+工程实践”三线并进的写作风格。
+结束语：本章为后续微调、量化与部署打基础，请务必完成 lab 的 smoke test 并在作业中提交环境信息与生成示例。
