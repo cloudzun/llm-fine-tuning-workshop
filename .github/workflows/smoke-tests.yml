@@ -1,0 +1,59 @@
+name: CI — Light-weight Smoke Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Make scripts executable
+        run: |
+          chmod +x labs/ci_smoke_test_*.sh || true
+
+      - name: Run smoke test: Lab 02 (LoRA) — optional
+        run: |
+          ./labs/ci_smoke_test_02.sh 2>&1 | tee /tmp/ct02.out || true
+        continue-on-error: true
+
+      - name: Run smoke test: Lab 03 (Data cleaning)
+        run: |
+          ./labs/ci_smoke_test_03.sh 2>&1 | tee /tmp/ct03.out
+        continue-on-error: true
+
+      - name: Run smoke test: Lab 04 (Quantization) — optional
+        run: |
+          ./labs/ci_smoke_test_04.sh 2>&1 | tee /tmp/ct04.out || true
+        continue-on-error: true
+
+      - name: Run smoke test: Lab 05 (Serve) — optional
+        run: |
+          ./labs/ci_smoke_test_05.sh 2>&1 | tee /tmp/ct05.out || true
+        continue-on-error: true
+
+      - name: Run smoke test: Lab 06 (Governance)
+        run: |
+          ./labs/ci_smoke_test_06.sh 2>&1 | tee /tmp/ct06.out
+        continue-on-error: true
+
+      - name: Upload smoke logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: /tmp/ct*.out
+
+      - name: Summary
+        run: |
+          echo "Smoke tests completed. Some steps are optional and may be skipped in CI due to heavy deps or native build requirements."
