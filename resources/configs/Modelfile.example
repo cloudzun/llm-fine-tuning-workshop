@@ -1,0 +1,12 @@
+# Example Modelfile for Ollama - adapt paths and model names as needed
+name: qwen2.5-7b-instruct-lora
+format: gguf
+model_path: /path/to/model_dir_or_file.gguf
+parameters:
+  context_size: 2048
+  temperature: 0.2
+  top_p: 0.95
+
+# Optional: post-processing hooks or system prompt templates
+system_prompt: |
+  You are an assistant trained on domain-specific customer support data. Be concise and helpful.

@@ -1,0 +1,2 @@
+{"text": "Q: What is LoRA?\nA: LoRA is a parameter-efficient fine-tuning method..."}
+{"text": "Q: How to quantize a model?\nA: Use llama.cpp or quantization tools to convert to GGUF..."}
